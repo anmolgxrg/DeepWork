@@ -10,27 +10,35 @@ def load_data():
     with pd.ExcelFile(excel_file) as xls:
         summary = pd.read_excel(xls, sheet_name='Summary')
         transactions = pd.read_excel(xls, sheet_name='Transactions')
-    return summary, transactions
+        managers = pd.read_excel(xls, sheet_name='Managers')
+        stations = pd.read_excel(xls, sheet_name='Stations')['Station Name'].tolist()
+    return summary, transactions, managers, stations
 
 # Function to save data to the Excel file
 def save_data(summary_df, transactions_df):
     with pd.ExcelWriter(excel_file) as writer:
         summary_df.to_excel(writer, sheet_name='Summary', index=False)
         transactions_df.to_excel(writer, sheet_name='Transactions', index=False)
+        managers_data.to_excel(writer, sheet_name='Managers', index=False)
+        stations_data.to_excel(writer, sheet_name='Stations', index=False)
 
 # Load existing data
-summary_data, transactional_data = load_data()
+summary_data, transactional_data, managers_data, stations_data = load_data()
 
 # Fetch distinct names from the summary data for search functionality
 names = summary_data['Name'].unique()
+managers = managers_data['Name'].unique()
 
 # Streamlit app layout
 st.title("Attendance for Managers & CL 2024")
 
+# Manager selection
+manager = st.selectbox("Select the manager filling this form", options=managers, help="Select the manager from the list.")
+
 # Name field with search functionality
-name = st.selectbox("What is the student's name?", options=names, help="Search and select a name from the list or add a new name.")
+name = st.selectbox("What is the student's name?", options=names, help="Search and select a name from the list.")
 shift_time = st.text_input("What is the shift time?")
-station = st.text_input("What station?")
+station = st.selectbox("Station", options=stations_data + ["Other"], help="Select the station from the list or choose 'Other'.")
 
 issue = st.selectbox("Issue", ["Tardy", "Uniform & Grooming Standards", "NCNS", "Unexcused Absence", "Excused Absence", "No ID", "Safety Issue", "Other"])
 comments = st.text_area("Comments")
@@ -67,7 +75,8 @@ if st.button("Submit"):
         "No ID Sent Home": [no_id_sent_home],
         "No ID Minutes Late": [no_id_minutes_late],
         "Safety Issue Reason": [safety_issue_reason],
-        "Timestamp": [timestamp]
+        "Timestamp": [timestamp],
+        "Manager": [manager]
     })
 
     # Update the transactional data
