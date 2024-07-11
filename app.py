@@ -7,20 +7,22 @@ excel_file = 'attendance_records.xlsx'
 
 # Function to load data from the Excel file
 def load_data():
-    try:
-        return pd.read_excel(excel_file)
-    except FileNotFoundError:
-        return pd.DataFrame(columns=['Name', 'Shift Time', 'Station', 'Issue', 'Comments', 'Tardy Minutes', 'Uniform Action', 'No ID Sent Home', 'No ID Minutes Late', 'Safety Issue Reason', 'Timestamp'])
+    with pd.ExcelFile(excel_file) as xls:
+        summary = pd.read_excel(xls, sheet_name='Summary')
+        transactions = pd.read_excel(xls, sheet_name='Transactions')
+    return summary, transactions
 
 # Function to save data to the Excel file
-def save_data(df):
-    df.to_excel(excel_file, index=False)
+def save_data(summary_df, transactions_df):
+    with pd.ExcelWriter(excel_file) as writer:
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        transactions_df.to_excel(writer, sheet_name='Transactions', index=False)
 
 # Load existing data
-data = load_data()
+summary_data, transactional_data = load_data()
 
-# Fetch distinct names from the data for search functionality
-names = data['Name'].unique()
+# Fetch distinct names from the summary data for search functionality
+names = summary_data['Name'].unique()
 
 # Streamlit app layout
 st.title("Attendance for Managers & CL 2024")
@@ -67,10 +69,22 @@ if st.button("Submit"):
         "Safety Issue Reason": [safety_issue_reason],
         "Timestamp": [timestamp]
     })
-    data = pd.concat([data, new_record], ignore_index=True)
-    save_data(data)
+
+    # Update the transactional data
+    transactional_data = pd.concat([transactional_data, new_record], ignore_index=True)
+    
+    # Update points in the summary data
+    summary_data.loc[summary_data['Name'] == name, 'Points'] += 1
+
+    # Save the updated data
+    save_data(summary_data, transactional_data)
+    
     st.success("Attendance record submitted successfully!")
 
 # Display the attendance records
 if st.checkbox("Show attendance records"):
-    st.dataframe(data)
+    st.dataframe(transactional_data)
+    
+# Display the summary data
+if st.checkbox("Show summary data"):
+    st.dataframe(summary_data)
